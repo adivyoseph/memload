@@ -209,6 +209,22 @@ int main(int argc, char **argv) {
             __g_firstLLC,
             topo_getLLCgroupsCnt() - __g_firstLLC );
 
+    // all command line choices have been made
+    // build configuration
+    printf("asks:\n");
+    printf("    number of rings    %d\n", __g_ringCnt);
+    printf("    LLCgroups per ring %d\n", __g_llcgroupsPerRing);
+    i = topo_getLLCgroupsCnt() - __g_firstLLC ;
+    if(__g_ringCnt*__g_llcgroupsPerRing <= i){
+        //proceed
+        printf("fits\n");
+    }
+    else {
+        printf("TOO many resources asked for\n");
+        return 0;
+    }
+
+
 
     getcpu(&cpu, &numa);
     printf("CLI %u %u\n", cpu, numa);
