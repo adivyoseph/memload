@@ -152,7 +152,7 @@ int topo_init(void){
             break;
     } 
     __cpusPerLLCgroup = j;
-   //printf("__cpusPerLLCgroup %d\n", j);
+   printf("__cpusPerLLCgroup %d\n", j);
 
 
    //llc id may appare in any order, seems to always start with zero

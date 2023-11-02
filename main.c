@@ -269,7 +269,7 @@ int main(int argc, char **argv) {
          for(j = 0; j < __g_llcgroupsPerRing; j++) {
             printf("\tLLCgroup[%02d]\n",j);
             for(k= 0; k < __g_dir_rings[i].llcGroups[j].cpuCnt; k++){
-                printf("\t\t%02d %02d %s\n",
+                printf("\t\t%03d %03d %s\n",
                     k,
                     __g_dir_rings[i].llcGroups[j].cpus[k].context.osId,
                     __g_dir_rings[i].llcGroups[j].cpus[k].context.name);
