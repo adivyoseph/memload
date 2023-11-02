@@ -110,7 +110,7 @@ int topo_init(void){
         p_file = fopen(c_work, "r");
         if (p_file) {
             fgets(c_work, 100, p_file);
-           printf("cpu %2d l3_id %s\n", i , c_work);
+           //printf("cpu %2d l3_id %s\n", i , c_work);
             __tempCpus[i].state = 1;
             __tempCpus[i].osId = i;
             __tempCpus[i].llcGroupId = atoi(c_work);
@@ -148,8 +148,7 @@ int topo_init(void){
         if (__tempCpus[i].llcGroupId == 0) {
             j++;
         }
-        else
-            break;
+ 
     } 
     __cpusPerLLCgroup = j;
    printf("__cpusPerLLCgroup %d\n", j);
