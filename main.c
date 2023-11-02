@@ -107,6 +107,9 @@ dir_ring_entry_t __g_dir_rings[RINGS_MAX];
  */
 int main(int argc, char **argv) {
     int i;
+    int opt;
+    unsigned cpu, numa;
+    cpu_set_t my_set;        /* Define your cpu_set bit mask. */
  
     topo_init();
     
@@ -211,14 +214,14 @@ int main(int argc, char **argv) {
     printf("CLI %u %u\n", cpu, numa);
 
     CPU_ZERO(&my_set); 
-    if (cliAffinity >= 0) {
-        CPU_SET(cliAffinity, &my_set);
+    if (__g_cliAffinity >= 0) {
+        CPU_SET(__g_cliAffinity, &my_set);
         sched_setaffinity(0, sizeof(cpu_set_t), &my_set);
     }
 
     getcpu(&cpu, &numa);
     printf("CLI %u %u\n", cpu, numa);
-    workq_init(&g_workq_cli);
+    //workq_init(&g_workq_cli);
 
   
   while (1) {

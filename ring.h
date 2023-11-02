@@ -2,7 +2,7 @@
 #define ___RING_H___
 
 
-#typedef struct ringEntry_s {
+typedef struct ringEntry_s {
     struct ringEntry_s *p_next __attribute__ ((aligned(CACHELINE_SIZE)));
     union {
         int seq;

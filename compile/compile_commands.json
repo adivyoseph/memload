@@ -1,0 +1,26 @@
+[
+  {
+    "directory": "/home/martin/memload/compile",
+    "command": "cc -Imtest@exe -I. -I.. -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g -O2 -pthread -MD -MQ 'mtest@exe/main.c.o' -MF 'mtest@exe/main.c.o.d' -o 'mtest@exe/main.c.o' -c ../main.c",
+    "file": "../main.c",
+    "output": "mtest@exe/main.c.o"
+  },
+  {
+    "directory": "/home/martin/memload/compile",
+    "command": "cc -Imtest@exe -I. -I.. -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g -O2 -pthread -MD -MQ 'mtest@exe/topology.c.o' -MF 'mtest@exe/topology.c.o.d' -o 'mtest@exe/topology.c.o' -c ../topology.c",
+    "file": "../topology.c",
+    "output": "mtest@exe/topology.c.o"
+  },
+  {
+    "directory": "/home/martin/memload/compile",
+    "command": "cc -Imtest@exe -I. -I.. -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g -O2 -pthread -MD -MQ 'mtest@exe/workq.c.o' -MF 'mtest@exe/workq.c.o.d' -o 'mtest@exe/workq.c.o' -c ../workq.c",
+    "file": "../workq.c",
+    "output": "mtest@exe/workq.c.o"
+  },
+  {
+    "directory": "/home/martin/memload/compile",
+    "command": "cc -Imtest@exe -I. -I.. -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g -O2 -pthread -MD -MQ 'mtest@exe/cli.c.o' -MF 'mtest@exe/cli.c.o.d' -o 'mtest@exe/cli.c.o' -c ../cli.c",
+    "file": "../cli.c",
+    "output": "mtest@exe/cli.c.o"
+  }
+]
