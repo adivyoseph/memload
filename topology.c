@@ -100,7 +100,7 @@ int topo_init(void){
      }
     closedir(p_folder);
     __cpusPerNode = i;
-    //printf("cpus per node %d\n", i);
+    printf("cpus per node %d\n", i);
 
     //build __tempCpus for node0
     for (i = 0; i < __cpusPerNode; i++) {
@@ -110,7 +110,7 @@ int topo_init(void){
         p_file = fopen(c_work, "r");
         if (p_file) {
             fgets(c_work, 100, p_file);
-           //printf("cpu %2d l3_id %s\n", i , c_work);
+           printf("cpu %2d l3_id %s\n", i , c_work);
             __tempCpus[i].state = 1;
             __tempCpus[i].osId = i;
             __tempCpus[i].llcGroupId = atoi(c_work);
@@ -142,7 +142,7 @@ int topo_init(void){
         //printf("SMT on\n");
     }
 
-    //find __coresPerLLCgroup
+    //find __cpusPerLLCgroup
     j = 0;
     for (i = 0; i < __cpusPerNode; i++) {
         if (__tempCpus[i].llcGroupId == 0) {
