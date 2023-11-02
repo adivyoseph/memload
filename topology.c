@@ -166,6 +166,7 @@ int topo_init(void){
 
    //fill in node structures
    //TODO add support multiple nodes
+   printf("===\n");
     for (i = 0; i < __cpusPerNode; i++) {
         j = __tempCpus[i].llcGroupId;
 
@@ -175,6 +176,7 @@ int topo_init(void){
            k = k - __cpusPerLLCgroup;
        }
        //account for SMT
+       printf("i %03d  llc %02d  k %02d logical ", i, j, k);
        if(__smtOn){
         if(i < __cpusPerNode/2){
             k = k*2;
@@ -183,12 +185,13 @@ int topo_init(void){
             k = k*2 +1;
         }
        }
+       printf("%02d\n", k);
        __numaNodes[0].llc_groups[j].cpus[k].osId = i;
  
     }
 
     //printf("test\n");
-/* 
+/* */
     for (i = 0; i < __llcGroupsPerNode; i++) {
         printf("LLC %d\n", i);
         for (j = 0; j < __cpusPerLLCgroup; j++) {
@@ -196,7 +199,7 @@ int topo_init(void){
  
         }
     }
-*/
+/* */
     return 0;
 }
 
