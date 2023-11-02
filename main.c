@@ -251,7 +251,7 @@ int main(int argc, char **argv) {
                 __g_dir_rings[i].llcGroups[j].cpus[k].context.llcGroup = l;
                 __g_dir_rings[i].llcGroups[j].cpus[k].context.cpu = k;
                 __g_dir_rings[i].llcGroups[j].cpus[k].context.osId = topo_getOsId(0, l,k);
-                sprintf(__g_dir_rings[i].llcGroups[j].cpus[k].name,
+                sprintf(__g_dir_rings[i].llcGroups[j].cpus[k].context.name,
                 "con_%02d_%02d_%02d",
                 i,l,k);
 
@@ -265,14 +265,14 @@ int main(int argc, char **argv) {
 
     // debug
     for(i = 0; i < __g_ringCnt; i++){
-        printf("Ring[%02d]\n, i");
+        printf("Ring[%02d]\n,", i);
          for(j = 0; j < __g_llcgroupsPerRing; j++) {
-            printf("\tLLCgroup[%02d]\n");
+            printf("\tLLCgroup[%02d]\n",j);
             for(k= 0; k < __g_dir_rings[i].llcGroups[j].cpuCnt; k++){
                 printf("\t\t%02d %02d %s\n",
                     k,
                     __g_dir_rings[i].llcGroups[j].cpus[k].context.osId,
-                    __g_dir_rings[i].llcGroups[j].cpus[k].name);
+                    __g_dir_rings[i].llcGroups[j].cpus[k].context.name);
 
             }
          }
