@@ -76,7 +76,7 @@ int topo_init(void){
        }
     }
    closedir(p_folder);
-    printf("nodes %d\n", i);
+    //printf("nodes %d\n", i);
     __nodeCnt = i;
 
     //assume that nodes are identical in size
@@ -100,7 +100,7 @@ int topo_init(void){
      }
     closedir(p_folder);
     __cpusPerNode = i;
-    printf("cpus per node %d\n", i);
+    //printf("cpus per node %d\n", i);
 
     //build __tempCpus for node0
     for (i = 0; i < __cpusPerNode; i++) {
@@ -139,7 +139,7 @@ int topo_init(void){
         }
     }
     if ( __smtOn > 0) {
-        printf("SMT on\n");
+        //printf("SMT on\n");
     }
 
     //find __coresPerLLCgroup
@@ -152,7 +152,7 @@ int topo_init(void){
             break;
     } 
     __cpusPerLLCgroup = j;
-   printf("__cpusPerLLCgroup %d\n", j);
+   //printf("__cpusPerLLCgroup %d\n", j);
 
 
    //llc id may appare in any order, seems to always start with zero
@@ -163,7 +163,7 @@ int topo_init(void){
        }
    } 
    __llcGroupsPerNode = j+1;
-    printf(" __llcGroupsPerNode %d\n", __llcGroupsPerNode);
+   // printf(" __llcGroupsPerNode %d\n", __llcGroupsPerNode);
 
    //fill in node structures
    //TODO add support multiple nodes
@@ -189,7 +189,7 @@ int topo_init(void){
     }
 
     //printf("test\n");
-/* */
+/* 
     for (i = 0; i < __llcGroupsPerNode; i++) {
         printf("LLC %d\n", i);
         for (j = 0; j < __cpusPerLLCgroup; j++) {
@@ -197,7 +197,7 @@ int topo_init(void){
  
         }
     }
-/* */
+*/
     return 0;
 }
 

@@ -245,29 +245,38 @@ int main(int argc, char **argv) {
     for(i = 0; i < __g_ringCnt; i++){
         __g_dir_rings[i].llcgroupCnt = __g_llcgroupsPerRing;
        __g_dir_rings[i].cpuCnt =  __g_llcgroupsPerRing * topo_getCpusPerLLCgroup();
-       for(j = 0; j < __g_llcgroupsPerRing; j++){
+       for(j = 0; j < __g_llcgroupsPerRing; j++, l++){
             __g_dir_rings[i].llcGroups[j].cpuCnt = topo_getCpusPerLLCgroup();
             for(k= 0; k < __g_dir_rings[i].llcGroups[j].cpuCnt; k++){
                 __g_dir_rings[i].llcGroups[j].cpus[k].context.llcGroup = l;
+                __g_dir_rings[i].llcGroups[j].cpus[k].context.cpu = k;
+                __g_dir_rings[i].llcGroups[j].cpus[k].context.osId = topo_getOsId(0, l,k);
+                sprintf(__g_dir_rings[i].llcGroups[j].cpus[k].name,
+                "con_%02d_%02d_%02d",
+                i,l,k);
 
 
                  //workq_t workq_in;
-    //int ;
-    //int cpu;
-    //int osId;
-
-
-    //int srcId;
-    //int state;
-   // char name[32];
+ 
 
             }
        }
-
-
-
     }
 
+    // debug
+    for(i = 0; i < __g_ringCnt; i++){
+        printf("Ring[%02d]\n, i");
+         for(j = 0; j < __g_llcgroupsPerRing; j++) {
+            printf("\tLLCgroup[%02d]\n");
+            for(k= 0; k < __g_dir_rings[i].llcGroups[j].cpuCnt; k++){
+                printf("\t\t%02d %02d %s\n",
+                    k,
+                    __g_dir_rings[i].llcGroups[j].cpus[k].context.osId,
+                    __g_dir_rings[i].llcGroups[j].cpus[k].name);
+
+            }
+         }
+    }
 
   
   while (1) {
