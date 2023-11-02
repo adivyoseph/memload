@@ -76,7 +76,7 @@ int topo_init(void){
        }
     }
    closedir(p_folder);
-    //printf("nodes %d\n", i);
+    printf("nodes %d\n", i);
     __nodeCnt = i;
 
     //assume that nodes are identical in size
@@ -100,7 +100,7 @@ int topo_init(void){
      }
     closedir(p_folder);
     __cpusPerNode = i;
-    //printf("cpus per node %d\n", i);
+    printf("cpus per node %d\n", i);
 
     //build __tempCpus for node0
     for (i = 0; i < __cpusPerNode; i++) {
@@ -139,7 +139,7 @@ int topo_init(void){
         }
     }
     if ( __smtOn > 0) {
-        //printf("SMT on\n");
+        printf("SMT on\n");
     }
 
     //find __coresPerLLCgroup
