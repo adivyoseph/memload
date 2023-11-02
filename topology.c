@@ -9,12 +9,12 @@ int __nodeCnt = 0;
 int __cpusPerNode = 0;
 int __smtOn = 0;
 int __llcGroupsPerNode = 0;
-int __coresPerLLCgroup = 0;
+int __cpusPerLLCgroup = 0;
 
 #define CPUS_PER_NODE_MAX 512
 #define NUMA_NODES_MAX 2 // only support NPS1
 #define LLC_PER_NODES_MAX 32 // 
-#define CORES_PER_LLC_MAX 32 // 
+#define CPUS_PER_LLC_MAX 16 // 
 typedef struct temp_cpu_s {
     int state;
     int osId;
@@ -28,13 +28,10 @@ typedef struct cpu_entry_s {
     int osId;
 } cpu_entry_t;
 
-typedef struct core_entry_s {
-    cpu_entry_t cpus[2];  //SMT
-
-} core_entry_t;
 typedef struct llc_group_s {
     int id;            //system wide
-    core_entry_t cores[CORES_PER_LLC_MAX];
+    int cpuCnt;
+    cpu_entry_t cpus[CPUS_PER_LLC_MAX];
 } llc_group_t;
 
  typedef struct numa_node_s {
@@ -154,8 +151,8 @@ int topo_init(void){
         else
             break;
     } 
-    __coresPerLLCgroup = j;
-   //printf("__coresPerLLCgroup %d\n", j);
+    __cpusPerLLCgroup = j;
+   printf("__cpusPerLLCgroup %d\n", j);
 
 
    //llc id may appare in any order, seems to always start with zero
@@ -166,47 +163,41 @@ int topo_init(void){
        }
    } 
    __llcGroupsPerNode = j+1;
-  //printf(" __llcGroupsPerNode %d\n", __llcGroupsPerNode);
+    printf(" __llcGroupsPerNode %d\n", __llcGroupsPerNode);
 
-    //fill in node structures
+   //fill in node structures
    //TODO add support multiple nodes
     for (i = 0; i < __cpusPerNode; i++) {
         j = __tempCpus[i].llcGroupId;
 
         __numaNodes[0].llc_groups[j].id = j;
        k = i;
-       while (  k>= __coresPerLLCgroup ) {
-           k = k - __coresPerLLCgroup;
+       while (  k>= __cpusPerLLCgroup ) {
+           k = k - __cpusPerLLCgroup;
        }
-
-         if (__smtOn > 0) {
-             if (i < __cpusPerNode/2) {
-                 //printf(" cpu %d  llc %d  percore %d smt 0 \n", i, j, k);
-                 __numaNodes[0].llc_groups[j].cores[k].cpus[0].osId = i;
-             }
-             else {
-
-                 //printf(" cpu %d  llc %d  percore %d  smt 1\n", i, j, k);
-                 __numaNodes[0].llc_groups[j].cores[k].cpus[1].osId = i;
-             }
-         }
-         else {
-                __numaNodes[0].llc_groups[j].cores[k].cpus[0].osId = i;
-           }
+       //account for SMT
+       if(__smtOn){
+        if(i < __cpusPerNode/2){
+            k = k*2;
+        }
+        else {
+            k = k*2 +1;
+        }
+       }
+       __numaNodes[0].llc_groups[j].cpus[k].osId = i;
+ 
     }
 
     //printf("test\n");
-/*
+/* */
     for (i = 0; i < __llcGroupsPerNode; i++) {
         printf("LLC %d\n", i);
-        for (j = 0; j < __coresPerLLCgroup; j++) {
-            printf("\tcore %3d\t cpu 0  OS_id %3d\n", j, __numaNodes[0].llc_groups[i].cores[j].cpus[0].osId );
-            if (__smtOn > 0) {
-                printf("\t        \t cpu 1  OS_id %3d\n",  __numaNodes[0].llc_groups[i].cores[j].cpus[1].osId );
-            }
+        for (j = 0; j < __cpusPerLLCgroup; j++) {
+            printf("\tcore %3d\t cpu 0  OS_id %3d\n", j, __numaNodes[0].llc_groups[i].cpus[j].osId );
+ 
         }
     }
-*/
+/* */
     return 0;
 }
 
@@ -222,19 +213,16 @@ int topo_getSMTOn(void){
     return __smtOn;
 }
 
-int topo_getCoresPerLLCgroup(void){
-    return __coresPerLLCgroup;
-}
-
-
 int topo_getCpusPerLLCgroup(void){
-    return __coresPerLLCgroup * (__smtOn + 1);
+    return __cpusPerLLCgroup;
 }
 
-int topo_getOsId(int node, int llcgroup, int core, int cpu){
+
+
+int topo_getOsId(int node, int llcgroup, int cpu){
     int osId = -1;
     //TODO add checks
-    osId = __numaNodes[node].llc_groups[llcgroup].cores[core].cpus[cpu].osId;
+    osId = __numaNodes[node].llc_groups[llcgroup].cpus[cpu].osId;
 
     return osId;
 }

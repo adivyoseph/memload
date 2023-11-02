@@ -106,7 +106,7 @@ dir_ring_entry_t __g_dir_rings[RINGS_MAX];
  * @return int 
  */
 int main(int argc, char **argv) {
-    int i;
+    int i, j, k ,l;
     int opt;
     unsigned cpu, numa;
     cpu_set_t my_set;        /* Define your cpu_set bit mask. */
@@ -238,6 +238,36 @@ int main(int argc, char **argv) {
     getcpu(&cpu, &numa);
     printf("CLI %u %u\n", cpu, numa);
     //workq_init(&g_workq_cli);
+
+
+    //build directory of resources
+    l  = __g_firstLLC;
+    for(i = 0; i < __g_ringCnt; i++){
+        __g_dir_rings[i].llcgroupCnt = __g_llcgroupsPerRing;
+       __g_dir_rings[i].cpuCnt =  __g_llcgroupsPerRing * topo_getCpusPerLLCgroup();
+       for(j = 0; j < __g_llcgroupsPerRing; j++){
+            __g_dir_rings[i].llcGroups[j].cpuCnt = topo_getCpusPerLLCgroup();
+            for(k= 0; k < __g_dir_rings[i].llcGroups[j].cpuCnt; k++){
+                __g_dir_rings[i].llcGroups[j].cpus[k].context.llcGroup = l;
+
+
+                 //workq_t workq_in;
+    //int ;
+    //int cpu;
+    //int osId;
+
+
+    //int srcId;
+    //int state;
+   // char name[32];
+
+            }
+       }
+
+
+
+    }
+
 
   
   while (1) {
