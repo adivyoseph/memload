@@ -57,7 +57,7 @@ int topo_init(void){
     struct dirent *p_entry;
     char c_work[128];
 
-    int i, j,k;
+    int i, j,k,m;
 
     //determine node count
     // > 2 post a warning and abort
@@ -167,13 +167,20 @@ int topo_init(void){
    //fill in node structures
    //TODO add support multiple nodes
    printf("===\n");
+   if(__smtOn){
+        m = __cpusPerLLCgroup/2;
+   }
+   else {
+     m = __cpusPerLLCgroup;
+   }
+
     for (i = 0; i < __cpusPerNode; i++) {
         j = __tempCpus[i].llcGroupId;
 
         __numaNodes[0].llc_groups[j].id = j;
        k = i;
-       while (  k>= __cpusPerLLCgroup ) {
-           k = k - __cpusPerLLCgroup;
+       while (  k>= m ) {
+           k = k - m;
        }
        //account for SMT
        printf("i %03d  llc %02d  k %02d logical ", i, j, k);
