@@ -122,6 +122,7 @@ ackq_entry_t __g_ackq[NUMA_CPU_MAX];
 typedef struct sendq_entry_s {
     struct sendq_entry_s *p_next;
     workq_t *p_workq;
+    ThreadContext_t *p_context;
  
 } sendq_entry_t;
 
@@ -333,6 +334,7 @@ int main(int argc, char **argv) {
                 __g_ackq[m].p_next = &__g_ackq[0];
                 __g_sendq[m].p_next = NULL;
                 __g_sendq[m].p_workq = __g_dir_rings[i].llcGroups[j].cpus[k].context.p_workq_in;
+                __g_sendq[m].p_context = &__g_dir_rings[i].llcGroups[j].cpus[k].context;
                 workq_init(&__g_ackq[m].workq);
                 __g_dir_rings[i].llcGroups[j].cpus[k].context.p_ackq_out = &__g_ackq[m].workq;
                  pthread_create(&__g_dir_rings[i].llcGroups[j].cpus[k].context.thread_id, NULL, 
@@ -421,7 +423,7 @@ int main(int argc, char **argv) {
     while(1){
         if(workq_read(this->p_workq_in, &msg)){
             if(msg.cmd == CMD_CTL_READY){
-                printf("ready rx %d (%d)\n",i, __g_consumerCnt);
+                //printf("ready rx %d (%d)\n",i, __g_consumerCnt);
                 i++;
             }
             if( i >= __g_consumerCnt) break;
@@ -451,7 +453,9 @@ int main(int argc, char **argv) {
 int cbSaveStats(int argc, char *argv[]){
     //int n, j, l, c, k, m,sumRx, sumTx;
     FILE *fptr;
+    int i;
     //ThreadContext_t *p_context;
+    sendq_entry_t *p_sendq = &__g_sendq[0];
 
     fptr = fopen("mtest.txt", "w");
     fprintf(fptr, "topology:\n");
@@ -463,6 +467,17 @@ int cbSaveStats(int argc, char *argv[]){
     fprintf(fptr,"\trings     %d\n", __g_ringCnt);
     fprintf(fptr,"\tllc per ring %d\n", __g_llcgroupsPerRing);
     fprintf(fptr,"\tpkt len   %d\n", __g_pktLen);
+    fprintf(fptr,"\nConsumers:\n");
+    i = 0;
+    while(p_sendq != NULL){
+        fprintf(fptr,"\t%03d rxCnt %d\n", i, p_sendq->p_context->rxCnt);
+        i++;
+        p_sendq = (sendq_entry_t *) p_sendq->p_next;
+
+
+
+
+    }
 
 
  
