@@ -442,6 +442,10 @@ int main(int argc, char **argv) {
        //TODO handle
     }
 
+    while(1){
+        if(__g_ctlThreads[CTL_THREAD_ACKS].rxCnt >= (__g_consumerCnt * 100)) break;
+    }
+
     
     while (1) {
       if(menuLoop() == 0)  break;
