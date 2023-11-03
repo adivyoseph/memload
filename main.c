@@ -347,6 +347,7 @@ int main(int argc, char **argv) {
 
 
     // debug
+    /*
     for(i = 0; i < __g_ringCnt; i++){
         printf("Ring[%02d]\n,", i);
          for(j = 0; j < __g_llcgroupsPerRing; j++) {
@@ -360,6 +361,7 @@ int main(int argc, char **argv) {
             }
          }
     }
+    */
 
     //create rings
     //TODO
@@ -512,7 +514,7 @@ void *th_ack(void *p_arg){
      
 
 
-     //printf("%s%d init now\n", this->name, this->instance);
+     printf("%s init now\n", this->name);
 
 
 
@@ -585,7 +587,7 @@ void *th_nic(void *p_arg){
      
 
 
-     //printf("%s%d init now\n", this->name, this->instance);
+     printf("%s init now\n", this->name);
 
 
 
@@ -604,7 +606,7 @@ void *th_nic(void *p_arg){
                send_cnt = msg.seq;
                ringCnt = msg.src;
                pktSize = msg.length;
-               //printf("%s START send_cnt %d destCnt %d\n", this->name, send_cnt, send_destCnt);
+               printf("%s START send_cnt %d ringCnt %d\n", this->name, send_cnt, ringCnt);
                break;
            }
         }
@@ -670,7 +672,7 @@ void *th_con(void *p_arg){
      
 
 
-     //printf("%s%d init now\n", this->name, this->instance);
+     printf("%s init now\n", this->name);
 
 
 

@@ -60,6 +60,7 @@ int topo_init(void){
     DIR *p_folder;
     struct dirent *p_entry;
     char c_work[128];
+    char *p_char = NULL;
 
     int i, j,k,m;
 
@@ -113,7 +114,8 @@ int topo_init(void){
         //printf("open arg %s\n", c_work);
         p_file = fopen(c_work, "r");
         if (p_file) {
-            fgets(c_work, 100, p_file);
+            p_char  = fgets(c_work, 100, p_file);
+            if(p_char == NULL) printf("error\n");
            //printf("cpu %2d l3_id %s\n", i , c_work);
             __tempCpus[i].state = 1;
             __tempCpus[i].osId = i;
@@ -128,7 +130,7 @@ int topo_init(void){
     //printf("open arg %s\n", c_work);
     p_file = fopen(c_work, "r");
     if (p_file) {
-        fscanf(p_file,"%d,%d", &j, &k);
+        m = fscanf(p_file,"%d,%d", &j, &k);
         //printf("j = %d, k = %d\n", j, k);
         fclose(p_file);
         if (j == 0) {
@@ -170,7 +172,7 @@ int topo_init(void){
 
    //fill in node structures
    //TODO add support multiple nodes
-   printf("===\n");
+   //printf("===\n");
    if(__smtOn){
         m = __cpusPerLLCgroup/2;
    }
@@ -187,7 +189,7 @@ int topo_init(void){
            k = k - m;
        }
        //account for SMT
-       printf("i %03d  llc %02d  k %02d logical ", i, j, k);
+      // printf("i %03d  llc %02d  k %02d logical ", i, j, k);
        if(__smtOn){
         if(i < __cpusPerNode/2){
             k = k*2;
@@ -196,13 +198,13 @@ int topo_init(void){
             k = k*2 +1;
         }
        }
-       printf("%02d\n", k);
+       //printf("%02d\n", k);
        __numaNodes[0].llc_groups[j].cpus[k].osId = i;
  
     }
 
     //printf("test\n");
-/* */
+/* 
     for (i = 0; i < __llcGroupsPerNode; i++) {
         printf("LLC %d\n", i);
         for (j = 0; j < __cpusPerLLCgroup; j++) {
@@ -210,7 +212,7 @@ int topo_init(void){
  
         }
     }
-/* */
+*/
     return 0;
 }
 
