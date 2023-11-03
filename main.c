@@ -451,7 +451,7 @@ int main(int argc, char **argv) {
         }
 
     }
-
+    printf("test stopped\n>");
     
     while (1) {
       if(menuLoop() == 0)  break;
@@ -576,6 +576,7 @@ void *th_ack(void *p_arg){
 
         
     }
+    while (1) {}
 }
 
 
