@@ -474,14 +474,11 @@ int cbSaveStats(int argc, char *argv[]){
         i++;
         p_sendq = (sendq_entry_t *) p_sendq->p_next;
 
-
-
-
     }
+    fprintf(fptr,"\nAcks\n");
+    fprintf(fptr,"\trxCnt %d\n", __g_ctlThreads[CTL_THREAD_ACKS].rxCnt);
 
 
- 
- 
 
     fclose(fptr);
     return 0;
@@ -550,6 +547,7 @@ void *th_ack(void *p_arg){
 
          if(workq_read(&p_ackq->workq, &msg)){
             p_ackq->count++;
+            this->rxCnt++;
 
 
          }
