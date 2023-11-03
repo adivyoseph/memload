@@ -420,9 +420,10 @@ int main(int argc, char **argv) {
     i = 0;
     while(1){
             if(msg.cmd == CMD_CTL_READY){
+                printf("ready rx %d (%d)\n"i, __g_consumerCnt);
                 i++;
             }
-            if( i == __g_consumerCnt) break;
+            if( i >= __g_consumerCnt) break;
     }
     printf("%d consumers ready\n", i);
 
