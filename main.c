@@ -443,7 +443,13 @@ int main(int argc, char **argv) {
     }
 
     while(1){
-        if(__g_ctlThreads[CTL_THREAD_ACKS].rxCnt >= (__g_consumerCnt * 100)) break;
+        if(workq_read(this->p_workq_in, &msg)){
+            if(msg.cmd == CMD_CTL_STOP){
+                //if(__g_ctlThreads[CTL_THREAD_ACKS].rxCnt >= (__g_consumerCnt * 100)) break;
+                break;
+            }
+        }
+
     }
 
     
@@ -556,6 +562,16 @@ void *th_ack(void *p_arg){
 
          }
         p_ackq = p_ackq->p_next;
+        if(this->rxCnt >= __g_consumerCnt * 100){
+            printf("ach done\n");
+            msg.cmd = CMD_CTL_STOP;
+            msg.src = this->srcId;
+            msg.length = 0;
+            p_workq = (workq_t *) __g_ctlThreads[CTL_THREAD_CLI].p_workq_in;
+             if(workq_write(p_workq, &msg)){
+                     this->errors++;
+            }
+        }
 
         
     }
