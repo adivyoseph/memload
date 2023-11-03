@@ -27,22 +27,35 @@
 #include "workq.h"
 #include "ring.h"
 
-//tuune
+//tune
 int __g_firstLLC = 0;               // -f first LLCgroup for rings and consumers
                                 //1 means skip 0 (use 0 for cli, nic and stats threads)
 int __g_ringCnt = 1;                // -r number of rings to build
 int __g_llcgroupsPerRing = 1;       // -l number of LLCgroups to share a Ring
 //--
 int __g_cliAffinity = 1;            // -c cpu to run cli thread on
-int __g_statAffinity = 2;           // -s cpu to run stats gathering thread on
+int __g_ackAffinity = 2;           // -s cpu to run stats gathering thread on
 int __g_nicAffinity = 3;            // -n cpu to run nic thread on
 int __g_pktLen = 1000;              // -p packet size to replicate
+int __g_consumerCnt = 0;            // total accumerlators activated
 
 #define BILLION  1000000000L
 #define RINGS_MAX       16          // maximum number of rings on a socket
 #define LLCGROUPS_MAX   16          // maximum number of LLCgroups on a socket
 #define LLCGROUP_CPU_MAX 16         // maximum number og cpu's per llcGroup
 #define PACKET_SIZE_MAX     1800    // maximum packet size that can be generated
+#define NUMA_CPU_MAX    256         //TODO limit for now
+
+
+// commands
+#define CMD_CTL_INIT        1
+#define CMD_CTL_READY       2
+#define CMD_CTL_START       3
+#define CMD_CTL_STOP        4
+#define CMD_STAT_EVENT      5
+#define CMD_EVENT_REQ       10
+#define CMD_EVENT_ACK       11
+
 
 // cli externs
 extern int  menuInit();
@@ -54,11 +67,11 @@ int cbSaveStats(int argc, char *argv[]);
 
 //
 typedef struct ThreadContext_s {
-    workq_t workq_in;
-    int llcGroup;
-    int cpu;
-    int osId;
-
+    workq_t *p_workq_in;       // cli control quque
+    workq_t *p_ackq_out;    // packet completion ack feedback for nic thread
+    int llcGroup;           // info only
+    int cpu;                // info only per llc logical cpu number
+    int osId;               //OS cpu number used for setting affinity
 
     int srcId;
     int state;
@@ -67,6 +80,7 @@ typedef struct ThreadContext_s {
 
     //stats
     unsigned int errors;
+    unsigned int rxCnt;
  
 } ThreadContext_t;
 
@@ -94,11 +108,43 @@ typedef struct dir_ring_entry_s {
 
 dir_ring_entry_t __g_dir_rings[RINGS_MAX];
 
+//acks per cpu event queues
+typedef struct ackq_entry_s {
+    struct ackq_entry_s *p_next;
+    workq_t workq;
+    //stats
+    int count;
+
+} ackq_entry_t;
+
+ackq_entry_t __g_ackq[NUMA_CPU_MAX];
+
+typedef struct sendq_entry_s {
+    struct sendq_entry_s *p_next;
+    workq_t *p_workq;
+ 
+} sendq_entry_t;
+
+sendq_entry_t __g_sendq[NUMA_CPU_MAX];
+
+
+
+// contexts for supporting threads
+#define CTL_THREAD_CLI      0           // cli thread
+#define CTL_THREAD_NIC      1           // packet generator
+#define CTL_THREAD_ACKS     2           // feedback thread for NIC, to prevent overrun
+#define CTL_THREADS_MAX     3
+
+ThreadContext_t __g_ctlThreads[CTL_THREADS_MAX];
+
+void *th_nic(void *p_arg);
+void *th_ack(void *p_arg);
+void *th_con(void *p_arg);
 
 /**
  * 
  * 
- * @author martin (10/15/23)
+ * @author martin (11/02/23)
  * @brief start
  * @param argc 
  * @param argv 
@@ -106,10 +152,14 @@ dir_ring_entry_t __g_dir_rings[RINGS_MAX];
  * @return int 
  */
 int main(int argc, char **argv) {
-    int i, j, k ,l;
+    ThreadContext_t *this = (ThreadContext_t*) &__g_ctlThreads[CTL_THREAD_CLI];
+    int i, j, k ,l,m;
     int opt;
     unsigned cpu, numa;
     cpu_set_t my_set;        /* Define your cpu_set bit mask. */
+    msg_t                  msg;
+    sendq_entry_t *p_sendq = & __g_sendq[0];
+
  
     topo_init();
     
@@ -176,7 +226,7 @@ int main(int argc, char **argv) {
        case 's':                    //stats cpu mapping
                 i = atoi(optarg);
                 if(i < (topo_getCpusPerLLCgroup() * topo_getLLCgroupsCnt())) {
-                    __g_statAffinity = i;
+                    __g_ackAffinity = i;
                 }
                 else {
                     printf("stats cpu %d not valid\n", i);
@@ -201,8 +251,26 @@ int main(int argc, char **argv) {
 
  
     printf("cli   cpu %d\n", __g_cliAffinity);    
-    printf("stats cpu %d\n", __g_statAffinity);    
+    __g_ctlThreads[CTL_THREAD_CLI].osId = __g_cliAffinity;
+    sprintf(__g_ctlThreads[CTL_THREAD_CLI].name, "cli");
+    __g_ctlThreads[CTL_THREAD_CLI].p_workq_in = (workq_t *) malloc(sizeof(workq_t));
+    workq_init(__g_ctlThreads[CTL_THREAD_CLI].p_workq_in);
+
+
+    printf("ack cpu %d\n", __g_ackAffinity);    
+    __g_ctlThreads[CTL_THREAD_ACKS].osId = __g_ackAffinity;
+    sprintf(__g_ctlThreads[CTL_THREAD_ACKS].name, "acks");
+    __g_ctlThreads[CTL_THREAD_ACKS].p_workq_in = (workq_t *) malloc(sizeof(workq_t));
+    workq_init(__g_ctlThreads[CTL_THREAD_ACKS].p_workq_in);
+
+
     printf("nic   cpu %d\n", __g_nicAffinity); 
+    __g_ctlThreads[CTL_THREAD_NIC].osId = __g_nicAffinity;
+    sprintf(__g_ctlThreads[CTL_THREAD_NIC].name, "nic"); 
+    __g_ctlThreads[CTL_THREAD_NIC].p_workq_in = (workq_t *) malloc(sizeof(workq_t));
+    workq_init(__g_ctlThreads[CTL_THREAD_NIC].p_workq_in);
+
+
     printf("first LLCgroup %d\n", __g_firstLLC);
     printf("LLC total %d - %d = %d that can be used\n", 
             topo_getLLCgroupsCnt(), 
@@ -242,6 +310,7 @@ int main(int argc, char **argv) {
 
     //build directory of resources
     l  = __g_firstLLC;
+    m = 0;
     for(i = 0; i < __g_ringCnt; i++){
         __g_dir_rings[i].llcgroupCnt = __g_llcgroupsPerRing;
        __g_dir_rings[i].cpuCnt =  __g_llcgroupsPerRing * topo_getCpusPerLLCgroup();
@@ -254,14 +323,28 @@ int main(int argc, char **argv) {
                 sprintf(__g_dir_rings[i].llcGroups[j].cpus[k].context.name,
                 "con_%02d_%02d_%02d",
                 i,l,k);
+                __g_dir_rings[i].llcGroups[j].cpus[k].context.p_workq_in = (workq_t *) malloc(sizeof(workq_t));
 
-
-                 //workq_t workq_in;
- 
-
+                workq_init(__g_dir_rings[i].llcGroups[j].cpus[k].context.p_workq_in);
+                if(m > 0){
+                     __g_ackq[m -1].p_next = &__g_ackq[m];
+                     __g_sendq[m-1].p_next = &__g_sendq[m];
+                }
+                __g_ackq[m].p_next = &__g_ackq[0];
+                __g_sendq[m].p_next = NULL;
+                __g_sendq[m].p_workq = __g_dir_rings[i].llcGroups[j].cpus[k].context.p_workq_in;
+                workq_init(&__g_ackq[m].workq);
+                __g_dir_rings[i].llcGroups[j].cpus[k].context.p_ackq_out = &__g_ackq[m].workq;
+                 pthread_create(&__g_dir_rings[i].llcGroups[j].cpus[k].context.thread_id, NULL, 
+                            th_con, 
+                            (void *)  &__g_dir_rings[i].llcGroups[j].cpus[k].context);
+                m++;
             }
        }
     }
+    __g_consumerCnt = m;
+    printf("Total consumers %d\n", m);
+
 
     // debug
     for(i = 0; i < __g_ringCnt; i++){
@@ -278,16 +361,109 @@ int main(int argc, char **argv) {
          }
     }
 
-  
-  while (1) {
+    //create rings
+    //TODO
+
+
+    //start helper threads
+    //ack thread
+    pthread_create(&__g_ctlThreads[CTL_THREAD_ACKS].thread_id, NULL, th_ack, (void *) &__g_ctlThreads[CTL_THREAD_ACKS]);
+    msg.cmd = CMD_CTL_INIT;
+    if(workq_write(__g_ctlThreads[CTL_THREAD_ACKS].p_workq_in, &msg)){
+       this->errors++;
+       //TODO handle
+    }
+    //wait for ready
+    while(1){
+ 
+        if(workq_read(this->p_workq_in, &msg)){
+            if(msg.cmd == CMD_CTL_READY){
+                printf("ack thread is ready\n");
+                break;
+            }
+        }
+    }
+
+
+    // nic setup
+    pthread_create(&__g_ctlThreads[CTL_THREAD_NIC].thread_id, NULL, th_nic, (void *) &__g_ctlThreads[CTL_THREAD_NIC]);
+    msg.cmd = CMD_CTL_INIT;
+    if(workq_write(__g_ctlThreads[CTL_THREAD_NIC].p_workq_in, &msg)){
+       this->errors++;
+       //TODO handle
+    }
+    //wait for ready
+    while(1){
+ 
+        if(workq_read(this->p_workq_in, &msg)){
+            if(msg.cmd == CMD_CTL_READY){
+                printf("nic thread is ready\n");
+                break;
+            }
+        }
+    }
+
+     
+
+    //start consumers
+    // send list for now
+    while(p_sendq != NULL){
+         msg.cmd = CMD_CTL_INIT;
+        if(workq_write(p_sendq->p_workq, &msg)){
+            this->errors++;
+            //TODO handle
+        }
+        p_sendq = p_sendq->p_next;
+    }
+    i = 0;
+    while(1){
+            if(msg.cmd == CMD_CTL_READY){
+                i++;
+            }
+            if( i == __g_consumerCnt) break;
+    }
+    printf("%d consumers ready\n", i);
+
+
+   //start sender
+     msg.cmd = CMD_CTL_START;
+     msg.length = __g_pktLen;
+     msg.src = __g_ringCnt;
+     msg.seq = 100;
+    if(workq_write(__g_ctlThreads[CTL_THREAD_NIC].p_workq_in, &msg)){
+       this->errors++;
+       //TODO handle
+    }
+
+    
+    while (1) {
       if(menuLoop() == 0)  break;
-  }
+    }
 
   return 0;
 }
 
 int cbSaveStats(int argc, char *argv[]){
+    //int n, j, l, c, k, m,sumRx, sumTx;
+    FILE *fptr;
+    //ThreadContext_t *p_context;
+
+    fptr = fopen("mtest.txt", "w");
+    fprintf(fptr, "topology:\n");
+    fprintf(fptr,"\tcpu count %d\n", topo_getLLCgroupsCnt() * topo_getCpusPerLLCgroup());
+    fprintf(fptr,"\tcli       %d\n", __g_cliAffinity);
+    fprintf(fptr,"\tacks      %d\n",  __g_ackAffinity);
+    fprintf(fptr,"\tnic       %d\n", __g_nicAffinity);
+    fprintf(fptr,"\tconsumers %d\n", __g_consumerCnt);
+    fprintf(fptr,"\trings     %d\n", __g_ringCnt);
+    fprintf(fptr,"\tllc per ring %d\n", __g_llcgroupsPerRing);
+    fprintf(fptr,"\tpkt len   %d\n", __g_pktLen);
+
+
  
+ 
+
+    fclose(fptr);
     return 0;
 }
 
@@ -297,3 +473,228 @@ int cbGetStats(int argc, char *argv[] )
     return 0;
 }
 
+/**
+ * @author martin (11/02/23) 
+ *  
+ * @brief acks collecting thread 
+ * 
+ * @param p_arg  thread context
+ * 
+ * @return void* 
+*/
+void *th_ack(void *p_arg){
+    ThreadContext_t *this = (ThreadContext_t*) p_arg;
+    cpu_set_t           my_set;        /* Define your cpu_set bit mask. */
+    msg_t                  msg;
+    //int i;
+    ackq_entry_t *p_ackq = &__g_ackq[0];
+    workq_t *p_workq;
+  
+
+
+    CPU_ZERO(&my_set); 
+    if (this->osId >= 0) {
+        CPU_SET(this->osId, &my_set);
+        sched_setaffinity(0, sizeof(cpu_set_t), &my_set);
+    }
+
+    //printf("Thread_%06x PID %d %d cpu %3d %s\n", this->srcId, getpid(), gettid(), this->osId,  this->name);
+
+     while (1) {
+         if(workq_read(this->p_workq_in, &msg)){
+            if(msg.cmd == CMD_CTL_INIT){
+                break;
+            }
+         }
+     }
+
+     //init code here
+     
+
+
+     //printf("%s%d init now\n", this->name, this->instance);
+
+
+
+    msg.cmd = CMD_CTL_READY;
+    msg.src = this->srcId;
+    msg.length = 0;
+    p_workq = (workq_t *) __g_ctlThreads[CTL_THREAD_CLI].p_workq_in;
+    if(workq_write(p_workq, &msg)){
+        this->errors++;
+    }
+
+    
+    
+    while (1) {
+
+         if(workq_read(&p_ackq->workq, &msg)){
+            p_ackq->count++;
+
+
+         }
+        p_ackq = p_ackq->p_next;
+
+        
+    }
+}
+
+
+
+
+
+/**
+ * @author martin (11/02/23) 
+ *  
+ * @brief sender  thread 
+ * 
+ * @param p_arg  thread context
+ * 
+ * @return void* 
+*/
+void *th_nic(void *p_arg){
+    ThreadContext_t *this = (ThreadContext_t*) p_arg;
+    cpu_set_t           my_set;        /* Define your cpu_set bit mask. */
+    msg_t                  msg;
+    //int i;
+    int send_cnt = 10;
+    int ringCnt = 1;
+    int pktSize = 128;
+    int s =1;
+    sendq_entry_t *p_sendq = &__g_sendq[0];
+    workq_t *p_workq;
+
+
+    CPU_ZERO(&my_set); 
+    if (this->osId >= 0) {
+        CPU_SET(this->osId, &my_set);
+        sched_setaffinity(0, sizeof(cpu_set_t), &my_set);
+    }
+
+    //printf("Thread_%06x PID %d %d cpu %3d %s\n", this->srcId, getpid(), gettid(), this->osId,  this->name);
+
+     while (1) {
+         if(workq_read(this->p_workq_in, &msg)){
+            if(msg.cmd == CMD_CTL_INIT){
+                break;
+            }
+         }
+     }
+
+     //init code here
+     
+
+
+     //printf("%s%d init now\n", this->name, this->instance);
+
+
+
+    msg.cmd = CMD_CTL_READY;
+    msg.src = this->srcId;
+    msg.length = 0;
+    p_workq = __g_ctlThreads[CTL_THREAD_CLI].p_workq_in;
+    if(workq_write(p_workq, &msg)){
+        this->errors++;
+    }
+
+    // wait for start cmd
+    while (1) {
+        if(workq_read(this->p_workq_in, &msg)){
+           if(msg.cmd == CMD_CTL_START){
+               send_cnt = msg.seq;
+               ringCnt = msg.src;
+               pktSize = msg.length;
+               //printf("%s START send_cnt %d destCnt %d\n", this->name, send_cnt, send_destCnt);
+               break;
+           }
+        }
+    }
+    
+    while (1) {
+        if(send_cnt){
+            p_sendq = &__g_sendq[0];
+            while(p_sendq != NULL){
+                msg.cmd = CMD_EVENT_REQ;
+                msg.length = pktSize;
+                msg.seq = s;
+              
+                if(workq_write(p_sendq->p_workq, &msg)){
+                    this->errors++;
+                }
+                p_sendq = (sendq_entry_t *) p_sendq->p_next;
+
+            }
+            s++;
+            send_cnt--;
+        }
+     
+    }
+}
+
+
+
+
+/**
+ * @author martin (11/02/23) 
+ *  
+ * @brief consumer  thread 
+ * 
+ * @param p_arg  thread context
+ * 
+ * @return void* 
+*/
+void *th_con(void *p_arg){
+    ThreadContext_t *this = (ThreadContext_t*) p_arg;
+    cpu_set_t           my_set;        /* Define your cpu_set bit mask. */
+    msg_t                  msg;
+    //int i;
+ 
+
+    CPU_ZERO(&my_set); 
+    if (this->osId >= 0) {
+        CPU_SET(this->osId, &my_set);
+        sched_setaffinity(0, sizeof(cpu_set_t), &my_set);
+    }
+
+    //printf("Thread_%06x PID %d %d cpu %3d %s\n", this->srcId, getpid(), gettid(), this->osId,  this->name);
+
+     while (1) {
+         if(workq_read(this->p_workq_in, &msg)){
+            if(msg.cmd == CMD_CTL_INIT){
+                break;
+            }
+         }
+     }
+
+     //init code here
+     
+
+
+     //printf("%s%d init now\n", this->name, this->instance);
+
+
+
+    msg.cmd = CMD_CTL_READY;
+    msg.src = this->srcId;
+    msg.length = 0;
+    if(workq_write(__g_ctlThreads[CTL_THREAD_CLI].p_workq_in, &msg)){
+        this->errors++;
+    }
+
+    
+    
+    while (1) {
+         if(workq_read(this->p_workq_in, &msg)){
+            //assume request
+            this->rxCnt++;
+
+            msg.cmd = CMD_EVENT_ACK;
+            msg.src = this->srcId;
+            //msg.length = 0;
+            if(workq_write(this->p_ackq_out, &msg)){
+                this->errors++;
+            }
+         }
+   
+    }
+}

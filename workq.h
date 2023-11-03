@@ -18,9 +18,10 @@
 typedef struct msg_s {
     int cmd;
     int src;
-    int data;
+    int seq;
     int length;
     struct timespec start;
+    char data[2000];
 } msg_t;
 
 

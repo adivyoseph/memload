@@ -1,4 +1,4 @@
-Build started at 2023-11-01T19:39:21.209063
+Build started at 2023-11-02T21:48:57.547543
 Main binary: /usr/bin/python3
 Build Options: -Dbackend=ninja
 Python system: Linux
@@ -25,8 +25,8 @@ Build targets in project: 1
 
 Found ninja-1.10.0 at /usr/bin/ninja
 Running compile:
-Working directory:  /home/martin/memload/builddir/meson-private/tmp0iupuwrs
-Command line:  cc /home/martin/memload/builddir/meson-private/tmp0iupuwrs/testfile.c -o /home/martin/memload/builddir/meson-private/tmp0iupuwrs/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
+Working directory:  /home/martin/memload/builddir/meson-private/tmp110o0zzq
+Command line:  cc /home/martin/memload/builddir/meson-private/tmp110o0zzq/testfile.c -o /home/martin/memload/builddir/meson-private/tmp110o0zzq/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
 
 Code:
  
