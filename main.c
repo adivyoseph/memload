@@ -45,7 +45,7 @@ int __g_consumerCnt = 0;            // total accumerlators activated
 #define LLCGROUP_CPU_MAX 16         // maximum number og cpu's per llcGroup
 #define PACKET_SIZE_MAX     1800    // maximum packet size that can be generated
 #define NUMA_CPU_MAX    256         //TODO limit for now
-
+#define STATS_SAMPLES_MAX 16
 
 // commands
 #define CMD_CTL_INIT        1
@@ -81,6 +81,7 @@ typedef struct ThreadContext_s {
     //stats
     unsigned int errors;
     unsigned int rxCnt;
+    int  samples[STATS_SAMPLES_MAX];
  
 } ThreadContext_t;
 
@@ -471,7 +472,7 @@ int main(int argc, char **argv) {
 int cbSaveStats(int argc, char *argv[]){
     //int n, j, l, c, k, m,sumRx, sumTx;
     FILE *fptr;
-    int i;
+    int i, j;
     //ThreadContext_t *p_context;
     sendq_entry_t *p_sendq = &__g_sendq[0];
 
@@ -488,7 +489,11 @@ int cbSaveStats(int argc, char *argv[]){
     fprintf(fptr,"\nConsumers:\n");
     i = 0;
     while(p_sendq != NULL){
-        fprintf(fptr,"\t%03d rxCnt %d\n", i, p_sendq->p_context->rxCnt);
+        fprintf(fptr,"\t%03d rxCnt %d : ", i, p_sendq->p_context->rxCnt);
+        for(j = 0; j < 16; j++){
+            fprintf(fptr,",%'6d ", p_sendq->p_context->samples[j]);
+        }
+        fprintf(fptr,"\n");
         i++;
         p_sendq = (sendq_entry_t *) p_sendq->p_next;
 
@@ -547,7 +552,7 @@ void *th_ack(void *p_arg){
      
 
 
-     printf("%s init now\n", this->name);
+     //printf("%s init now\n", this->name);
 
 
 
@@ -633,7 +638,7 @@ void *th_nic(void *p_arg){
      
 
 
-     printf("%s init now\n", this->name);
+     //printf("%s init now\n", this->name);
 
 
 
@@ -665,6 +670,7 @@ void *th_nic(void *p_arg){
                 msg.cmd = CMD_EVENT_REQ;
                 msg.length = pktSize;
                 msg.seq = s;
+                clock_gettime(CLOCK_REALTIME, &msg.start);
               
                 if(workq_write(p_sendq->p_workq, &msg)){
                     this->errors++;
@@ -695,7 +701,9 @@ void *th_con(void *p_arg){
     ThreadContext_t *this = (ThreadContext_t*) p_arg;
     cpu_set_t           my_set;        /* Define your cpu_set bit mask. */
     msg_t                  msg;
-    //int i;
+    int i;
+    struct timespec end;
+    double accum;
  
 
     CPU_ZERO(&my_set); 
@@ -718,7 +726,7 @@ void *th_con(void *p_arg){
      
 
 
-     printf("%s init now\n", this->name);
+     //printf("%s init now\n", this->name);
 
 
 
@@ -735,6 +743,14 @@ void *th_con(void *p_arg){
          if(workq_read(this->p_workq_in, &msg)){
             //assume request
             this->rxCnt++;
+            clock_gettime(CLOCK_REALTIME, &end);
+            accum = ( end.tv_sec - msg.start.tv_sec ) + (double)( end.tv_nsec - msg.start.tv_nsec ) / (double)BILLION;
+            accum = trunc(accum / 0.00001);
+             i= (int)accum;
+            if (i > 15) {
+                i = 15;
+            }
+            this->samples[i]++;
 
             msg.cmd = CMD_EVENT_ACK;
             msg.src = this->srcId;
