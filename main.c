@@ -161,6 +161,10 @@ int main(int argc, char **argv) {
     msg_t                  msg;
     sendq_entry_t *p_sendq = & __g_sendq[0];
 
+    struct timespec start;
+    struct timespec end;
+    double accum;
+
  
     topo_init();
     
@@ -441,17 +445,21 @@ int main(int argc, char **argv) {
        this->errors++;
        //TODO handle
     }
+    clock_gettime(CLOCK_REALTIME, &start);
 
     while(1){
         if(workq_read(this->p_workq_in, &msg)){
             if(msg.cmd == CMD_CTL_STOP){
                 //if(__g_ctlThreads[CTL_THREAD_ACKS].rxCnt >= (__g_consumerCnt * 100)) break;
+                clock_gettime(CLOCK_REALTIME, &end);
                 break;
             }
         }
 
     }
     printf("test stopped\n>");
+    accum = ( end.tv_sec - start.tv_sec ) + (double)( end.tv_nsec - start.tv_nsec ) / (double)BILLION;
+    printf( "run time %lf\n", accum );
     
     while (1) {
       if(menuLoop() == 0)  break;
